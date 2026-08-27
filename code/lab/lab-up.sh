@@ -4,6 +4,8 @@
 # Usage : ./lab-up.sh
 set -euo pipefail
 
+
+
 ENGINE="${ENGINE:-podman}"
 NETWORK=vault-lab
 VAULT_IMAGE=docker.io/hashicorp/vault:1.20
