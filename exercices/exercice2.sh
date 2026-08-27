@@ -18,3 +18,11 @@ MT_TOKEN=$(v write -f -field=token \
     auth/approle/login role_id="$ROLE_ID" secret_id="$SECRET_ID" 2>/dev/null \
   || v write -field=token auth/approle/login \
        role_id="$ROLE_ID" secret_id="$SECRET_ID")
+
+
+curl -s -H "X-Vault-Token: $MT_TOKEN" \
+  "http://127.0.0.1:8200/v1/secret/data/services/meditrack-api/config" | jq
+
+
+curl -s -H "X-Vault-Token: $MT_TOKEN" \
+  "http://127.0.0.1:8200/v1/secret/data/services/paylink/api" | jq
