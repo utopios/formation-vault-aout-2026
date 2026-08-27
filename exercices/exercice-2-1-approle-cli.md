@@ -37,7 +37,7 @@ La policy à utiliser vous est fournie (l'écriture de policies est l'objet
 du module 3) :
 
 ```bash
-podman exec -i -e VAULT_ADDR=http://127.0.0.1:8200 \
+docker exec -i -e VAULT_ADDR=http://127.0.0.1:8200 \
   -e VAULT_TOKEN=root-token-formation vault \
   vault policy write meditrack-read - <<'EOF'
 # Lecture seule des secrets du service MediTrack
