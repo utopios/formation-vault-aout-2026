@@ -37,3 +37,5 @@ v kv delete secret/ledger/queue
 v kv undelete -versions=1 secret/ledger/queue
 
 v kv get -field=vhost secret/ledger/queue
+
+v kv destroy -versions=1 secret/ledger/db
