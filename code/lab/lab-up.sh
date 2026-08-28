@@ -6,7 +6,7 @@ set -euo pipefail
 
 
 
-ENGINE="${ENGINE:-docker}"
+ENGINE="${ENGINE:-podman}"
 NETWORK=vault-lab
 VAULT_IMAGE=docker.io/hashicorp/vault:1.20
 PG_IMAGE=docker.io/library/postgres:16-alpine
