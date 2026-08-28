@@ -1,0 +1,57 @@
+stages:
+  - deploy
+
+# ------------------------------------------------------------------
+# Variante 1 — vault CLI dans le job (fonctionne sur tous les tiers)
+# ------------------------------------------------------------------
+deploy-paylink:
+  stage: deploy
+  image: docker.io/hashicorp/vault:1.20
+  # Ne s'execute que sur main : coherent avec bound_claims ref=main cote Vault.
+  rules:
+    - if: $CI_COMMIT_REF_NAME == "main"
+  # GitLab genere et signe un id_token JWT pour ce job, expose dans
+  # la variable VAULT_ID_TOKEN. L'audience doit correspondre au
+  # bound_audiences du role Vault.
+  id_tokens:
+    VAULT_ID_TOKEN:
+      aud: https://vault.paylink.local
+  variables:
+    VAULT_ADDR: https://vault.paylink.example.com
+  script:
+    # Login : Vault verifie la signature (JWKS de gitlab.example.com),
+    # l'issuer, l'audience et les bound_claims (project_id, ref, ref_type).
+    - export VAULT_TOKEN="$(vault write -field=token auth/jwt/login role=paylink-deploy jwt=$VAULT_ID_TOKEN)"
+    # Lecture du secret avec le token de job (policy paylink-read, TTL 10 min)
+    - export PAYLINK_API_KEY="$(vault kv get -field=api_key secret/paylink/api)"
+    - export PAYLINK_API_URL="$(vault kv get -field=api_url secret/paylink/api)"
+    # ... etapes de deploiement qui consomment PAYLINK_API_KEY ...
+    - echo "Deploiement de paylink-api vers $PAYLINK_API_URL"
+    # Fin de job : on revoque le token (sinon il expire seul en 10 min)
+    - vault token revoke -self
+
+# ------------------------------------------------------------------
+# Variante 2 — integration native secrets: (GitLab Premium/Ultimate)
+# GitLab fait le login JWT et l'injection a votre place.
+# ------------------------------------------------------------------
+deploy-paylink-native:
+  stage: deploy
+  rules:
+    - if: $CI_COMMIT_REF_NAME == "main"
+  id_tokens:
+    VAULT_ID_TOKEN:
+      aud: https://vault.paylink.local
+  variables:
+    VAULT_SERVER_URL: https://vault.paylink.example.com
+    VAULT_AUTH_PATH: jwt
+    VAULT_AUTH_ROLE: paylink-deploy
+  secrets:
+    PAYLINK_API_KEY:
+      # chemin kv-v2 : <path>/<field>@<mount>
+      vault: paylink/api/api_key@secret
+      token: $VAULT_ID_TOKEN
+      # file: false -> variable d'environnement ; par defaut GitLab ecrit
+      # le secret dans un fichier et met son chemin dans la variable.
+      file: false
+  script:
+    - echo "Deploiement avec PAYLINK_API_KEY injectee par GitLab (masquee)"

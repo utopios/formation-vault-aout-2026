@@ -1,0 +1,64 @@
+# exemple-github-actions.yml — workflow GitHub Actions avec OIDC vers Vault.
+# REFERENCE : ce fichier illustre la configuration reelle GitHub Actions.
+# Il n'est PAS execute dans le lab et n'a donc pas ete rejoue —
+# adaptez URL, role et chemins a votre plateforme.
+#
+# Cote Vault (une seule fois, par un administrateur) :
+#   vault auth enable -path=jwt-github jwt
+#   vault write auth/jwt-github/config \
+#     oidc_discovery_url="https://token.actions.githubusercontent.com" \
+#     bound_issuer="https://token.actions.githubusercontent.com"
+#   vault write auth/jwt-github/role/paylink-deploy-gh - <<'EOF'
+#   {
+#     "role_type": "jwt",
+#     "bound_audiences": "https://github.com/utopios",
+#     "bound_claims": {
+#       "repository": "utopios/paylink-api",
+#       "ref": "refs/heads/main"
+#     },
+#     "user_claim": "repository",
+#     "token_policies": "paylink-read",
+#     "token_ttl": "10m"
+#   }
+#   EOF
+
+name: deploy-paylink
+
+on:
+  push:
+    branches:
+      - main
+
+# Indispensable : autorise le job a demander un id_token OIDC a GitHub.
+# Sans "id-token: write", le token n'est pas emis et le login echoue.
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Import des secrets depuis Vault (login OIDC automatique)
+        uses: hashicorp/vault-action@v3
+        with:
+          url: https://vault.paylink.example.com
+          path: jwt-github
+          method: jwt
+          role: paylink-deploy-gh
+          # audience de l'id_token demande a GitHub — doit correspondre
+          # au bound_audiences du role Vault
+          jwtGithubAudience: https://github.com/utopios
+          # <mount kv-v2>/data/<path> <field> | <NOM_DE_VARIABLE>
+          secrets: |
+            secret/data/paylink/api api_key | PAYLINK_API_KEY ;
+            secret/data/paylink/api api_url | PAYLINK_API_URL
+
+      - name: Deploiement
+        run: |
+          echo "Deploiement de paylink-api vers $PAYLINK_API_URL"
+          # PAYLINK_API_KEY est disponible en variable d'environnement,
+          # masquee automatiquement dans les logs par vault-action.
