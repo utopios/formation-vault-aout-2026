@@ -1,0 +1,35 @@
+# MediTrack sur kind — base de l'exercice 5.1 : deployment SANS annotations.
+# A vous d'ajouter les annotations d'injection (voir exercice-5-1-annotations.md).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: meditrack-sa
+  namespace: demo
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: meditrack-api
+  namespace: demo
+  labels:
+    app: meditrack-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: meditrack-api
+  template:
+    metadata:
+      labels:
+        app: meditrack-api
+    spec:
+      serviceAccountName: meditrack-sa
+      containers:
+        - name: app
+          image: alpine:3.20
+          command: ["sleep", "infinity"]

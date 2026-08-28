@@ -1,0 +1,42 @@
+# Vault Secrets Operator — demo 5.3 / TP 5.
+# Synchronise secret/meditrack/api vers le Secret K8s natif meditrack-api-creds.
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultConnection
+metadata:
+  name: vault-connection
+  namespace: demo
+spec:
+  # Service du chart Helm "vault" dans le namespace vault
+  address: http://vault.vault.svc:8200
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: vault-auth
+  namespace: demo
+spec:
+  vaultConnectionRef: vault-connection
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    # Role Vault vso-demo : bound_service_account_names=default,
+    # bound_service_account_namespaces=demo (voir vault-k8s-setup.sh)
+    role: vso-demo
+    serviceAccount: default
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: meditrack-api
+  namespace: demo
+spec:
+  vaultAuthRef: vault-auth
+  mount: secret
+  type: kv-v2
+  # Chemin logique KV v2 : PAS de prefixe data/ (VSO le gere)
+  path: meditrack/api
+  # 15s pour rendre la rotation visible en demo ; plusieurs minutes en production
+  refreshAfter: 15s
+  destination:
+    name: meditrack-api-creds
+    create: true
